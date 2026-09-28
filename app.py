@@ -36,24 +36,44 @@ def load_model():
 model=load_model()
 
 def explain(r):
-    x=[]; c=int(r.cibil_score); ratio=r.loan_amount/r.income_annum if r.income_annum else 999
-    if c>=750:x.append(f'CIBIL score of {c} is high and is the strongest feature in this project model.')
-    elif c>=650:x.append(f'CIBIL score of {c} is moderate-to-good and is an important model input.')
-    elif c>=550:x.append(f'CIBIL score of {c} is relatively low and can reduce the predicted approval probability.')
-    else:x.append(f'CIBIL score of {c} is low and can strongly affect the model prediction.')
-    x.append(f"The selected loan term is {int(r.loan_term)} years.")
-    if ratio<=3:x.append('The requested loan amount is relatively low compared with annual income.')
-    elif ratio<=5:x.append('The requested loan amount is moderate relative to annual income.')
-    else:x.append('The requested loan amount is high relative to annual income.')
-    x.append('The final prediction is generated from the combined pattern of all input features, not a single rule.')
-    return x
+    explanations = []
+    credit = int(r["Credit_Score"])
+    income = float(r["Annual_Income"])
+    loan = float(r["Loan_Amount_Requested"])
+    debt = float(r["Outstanding_Debt"])
+    default_risk = float(r["Default_Risk"])
+    if credit >= 750:
+        explanations.append(f"Credit Score of {credit} is relatively high and is an important model input.")
+    elif credit >= 650:
+        explanations.append(f"Credit Score of {credit} is in the moderate-to-good range and contributes to the prediction.")
+    elif credit >= 550:
+        explanations.append(f"Credit Score of {credit} is relatively low and may reduce the predicted approval probability.")
+    else:
+        explanations.append(f"Credit Score of {credit} is low and may strongly affect the model prediction.")
+    ratio = loan / income if income else 999
+    if ratio <= 0.25:
+        explanations.append("The requested loan amount is relatively low compared with annual income.")
+    elif ratio <= 0.50:
+        explanations.append("The requested loan amount is moderate relative to annual income.")
+    else:
+        explanations.append("The requested loan amount is relatively high compared with annual income.")
+    if debt <= 10000:
+        explanations.append("Outstanding debt is relatively low.")
+    elif debt >= 20000:
+        explanations.append("Outstanding debt is relatively high.")
+    if default_risk <= 0.30:
+        explanations.append("The recorded default-risk value is relatively low.")
+    elif default_risk >= 0.70:
+        explanations.append("The recorded default-risk value is relatively high.")
+    explanations.append("The final prediction is generated from the combined pattern of all input features, not a single rule.")
+    return explanations
 
 def pdf(a):
     b=BytesIO(); doc=SimpleDocTemplate(b,pagesize=A4,rightMargin=18*mm,leftMargin=18*mm,topMargin=18*mm,bottomMargin=18*mm)
     s=getSampleStyleSheet(); title=ParagraphStyle('t',parent=s['Title'],fontSize=24,alignment=TA_CENTER,textColor=colors.HexColor('#12324a')); h=ParagraphStyle('h',parent=s['Heading2'],fontSize=15,textColor=colors.HexColor('#12679b')); n=ParagraphStyle('n',parent=s['Normal'],fontSize=10,leading=15,textColor=colors.HexColor('#334e5e'))
     story=[Paragraph('LoanLens AI',title),Paragraph('Loan Approval Assessment Report',ParagraphStyle('sub',parent=n,alignment=TA_CENTER)),Spacer(1,15)]
     story += [Table([['Prediction',a['status']],['Approval Probability',f"{a['probability']:.2f}%"]],colWidths=[65*mm,90*mm],style=TableStyle([('BACKGROUND',(0,0),(0,-1),colors.HexColor('#eef8ff')),('GRID',(0,0),(-1,-1),.5,colors.HexColor('#d8eaf5')),('FONTNAME',(0,0),(-1,-1),'Helvetica-Bold'),('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8)])),Spacer(1,12),Paragraph('Applicant Details',h)]
-    rows=[['Field','Value'],['Dependents',str(a['no_of_dependents'])],['Education',a['education']],['Self Employed',a['self_employed']],['Annual Income',f"₹{a['income_annum']:,.0f}"],['Loan Amount',f"₹{a['loan_amount']:,.0f}"],['Loan Term',f"{a['loan_term']} years"],['CIBIL Score',str(a['cibil_score'])],['Residential Assets',f"₹{a['residential_assets_value']:,.0f}"],['Commercial Assets',f"₹{a['commercial_assets_value']:,.0f}"],['Luxury Assets',f"₹{a['luxury_assets_value']:,.0f}"],['Bank Assets',f"₹{a['bank_asset_value']:,.0f}"]]
+    rows=[['Field','Value'],['Gender',a['Gender']],['Age',str(a['Age'])],['Marital Status',a['Marital_Status']],['Dependents',str(a['Dependents'])],['Education',a['Education']],['Employment Status',a['Employment_Status']],['Occupation Type',a['Occupation_Type']],['Residential Status',a['Residential_Status']],['City/Town',a['City/Town']],['Annual Income',f"₹{a['Annual_Income']:,.0f}"],['Monthly Expenses',f"₹{a['Monthly_Expenses']:,.0f}"],['Credit Score',str(a['Credit_Score'])],['Existing Loans',str(a['Existing_Loans'])],['Existing Loan Amount',f"₹{a['Total_Existing_Loan_Amount']:,.0f}"],['Outstanding Debt',f"₹{a['Outstanding_Debt']:,.0f}"],['Loan History',str(a['Loan_History'])],['Loan Amount Requested',f"₹{a['Loan_Amount_Requested']:,.0f}"],['Loan Term',f"{a['Loan_Term']} months"],['Loan Purpose',a['Loan_Purpose']],['Interest Rate',f"{a['Interest_Rate']:.2f}%"],['Loan Type',a['Loan_Type']],['Co-Applicant',a['Co-Applicant']],['Bank Account History',str(a['Bank_Account_History'])],['Transaction Frequency',str(a['Transaction_Frequency'])],['Default Risk',f"{a['Default_Risk']:.2f}"]]
     story += [Table(rows,colWidths=[65*mm,90*mm],repeatRows=1,style=TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#12679b')),('TEXTCOLOR',(0,0),(-1,0),colors.white),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('GRID',(0,0),(-1,-1),.4,colors.HexColor('#d8eaf5')),('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor('#f8fcff')]),('TOPPADDING',(0,0),(-1,-1),6),('BOTTOMPADDING',(0,0),(-1,-1),6)])),Spacer(1,12),Paragraph('Prediction Explanation',h)]
     story += [Paragraph('• '+z,n) for z in a['explanation']]+[Spacer(1,8),Paragraph('Model Information',h),Paragraph('Prediction generated using the deployed Random Forest classifier. This is a decision-support prototype and does not replace regulatory checks, bank policies, or human review.',n)]
     doc.build(story); return b.getvalue()
@@ -76,40 +96,34 @@ def home():
         with y:
             if st.button('View Model Performance',use_container_width=True):st.session_state.page='performance';st.rerun()
     with b:
-        st.markdown('''<div class="card"><div class="muted">SAMPLE ASSESSMENT</div><h1 style="color:#12324a">97.5% <span style="font-size:13px;background:#eafaf3;color:#168452;padding:7px 12px;border-radius:20px">APPROVED</span></h1><div class="factor">CIBIL 750</div><div class="factor">Annual Income ₹80 L</div><div class="factor">Loan Amount ₹2 Cr</div></div>''',unsafe_allow_html=True)
+        st.markdown('<div class="card"><div class="muted">SAMPLE ASSESSMENT</div><h1 style="color:#12324a">93.0% <span style="font-size:13px;background:#eafaf3;color:#168452;padding:7px 12px;border-radius:20px">APPROVED</span></h1><div class="factor">Credit Score 750</div><div class="factor">Annual Income ₹90,000</div><div class="factor">Loan Amount ₹25,000</div></div>',unsafe_allow_html=True)
     st.markdown('<div class="section">Model at a glance</div>',unsafe_allow_html=True); st.write('')
-    for c,(n,l) in zip(st.columns(4),[('98.13%','Test Accuracy'),('99.86%','ROC-AUC'),('4,269','Applications'),('11','Input Features')]):
+    for c,(n,l) in zip(st.columns(4),[('85.11%','Test Accuracy'),('82.03%','ROC-AUC'),('52,000','Applications'),('25','Input Features')]):
         c.markdown(f'<div class="metric"><div class="num">{n}</div><div class="label">{l}</div></div>',unsafe_allow_html=True)
     st.markdown('<div class="section">How it works</div>',unsafe_allow_html=True); st.write('')
     steps=[('01','Enter applicant details'),('02','Preprocess inputs'),('03','Run Random Forest'),('04','Review assessment')]
     for c,(n,t) in zip(st.columns(4),steps):
         c.markdown(f'<div class="card"><div class="blue"><b>{n}</b></div><h4 style="color:#17394d">{t}</h4><div class="muted">Complete one step of the end-to-end ML pipeline.</div></div>',unsafe_allow_html=True)
-
     st.markdown('<div class="section">Top model factors</div>',unsafe_allow_html=True)
-    for c,(n,v) in zip(st.columns(5),[('CIBIL Score','Highest'),('Loan Term','6.15%'),('Loan Amount','3.09%'),('Annual Income','1.95%'),('Luxury Assets','1.95%')]):
+    for c,(n,v) in zip(st.columns(5),[('Credit Score','21.18%'),('Loan Amount','18.31%'),('Annual Income','11.03%'),('Age','6.95%'),('Interest Rate','3.82%')]):
         c.markdown(f'<div class="factor"><div class="muted">{n}</div><div class="num">{v}</div></div>',unsafe_allow_html=True)
-    st.markdown('<div class="card" style="margin-top:12px;"><div style="color:#5d7482;line-height:1.6;font-size:14px;"><b style="color:#17394d;">CIBIL Score is the dominant feature</b> in the trained Random Forest model. Feature importance indicates model reliance, not causation.</div></div>',unsafe_allow_html=True)
+    st.markdown('<div class="card" style="margin-top:12px;"><div style="color:#5d7482;line-height:1.6;font-size:14px;"><b style="color:#17394d;">Credit Score is the most important feature</b> in the trained Random Forest model at approximately 21.18%. Feature importance indicates model reliance, not causation.</div></div>',unsafe_allow_html=True)
     st.markdown('<div class="footer">LoanLens AI • Machine Learning-II Project • Decision-support prototype</div>',unsafe_allow_html=True)
 
 def assessment():
     nav(); st.markdown('<div class="section">Loan Assessment</div><div class="sub">Enter applicant information to generate a model-based prediction.</div>',unsafe_allow_html=True)
     with st.form('loan'):
         c1,c2,c3=st.columns(3)
-        dep=c1.number_input('Number of Dependents',0,20,2)
-        edu=c2.selectbox('Education',['Graduate','Not Graduate'])
-        emp=c3.selectbox('Self Employed',['No','Yes'])
-        c1,c2=st.columns(2)
-        inc=c1.number_input('Annual Income (₹)',0,100000000,8000000,100000)
-        loan=c1.number_input('Loan Amount (₹)',0,100000000,20000000,100000)
-        term=c1.number_input('Loan Term (Years)',1,50,10)
-        cibil=c1.number_input('CIBIL Score',300,900,750)
-        res=c2.number_input('Residential Assets Value (₹)',0,100000000,10000000,100000)
-        com=c2.number_input('Commercial Assets Value (₹)',0,100000000,5000000,100000)
-        lux=c2.number_input('Luxury Assets Value (₹)',0,100000000,15000000,100000)
-        bank=c2.number_input('Bank Asset Value (₹)',0,100000000,7000000,100000)
+        gender=c1.selectbox('Gender',['Male','Female']); age=c1.number_input('Age',18,69,35); marital=c1.selectbox('Marital Status',['Married','Single','Divorced']); dependents=c1.number_input('Dependents',0,3,2)
+        education=c2.selectbox('Education',['Graduate','High School','Postgraduate']); employment=c2.selectbox('Employment Status',['Employed','Self-Employed','Unemployed']); occupation=c2.selectbox('Occupation Type',['Salaried','Business','Freelancer','Professional']); residential=c2.selectbox('Residential Status',['Own','Rent','Other'])
+        city=c3.selectbox('City/Town',['Urban','Suburban','Rural']); annual_income=c3.number_input('Annual Income (₹)',20009,149998,90000); monthly_expenses=c3.number_input('Monthly Expenses (₹)',500,4999,3000); credit_score=c3.number_input('Credit Score',300,849,750)
+        c1,c2,c3=st.columns(3)
+        existing_loans=c1.number_input('Existing Loans',0,2,1); existing_loan_amount=c1.number_input('Total Existing Loan Amount (₹)',0,49999,20000); outstanding_debt=c1.number_input('Outstanding Debt (₹)',0,29998,10000); loan_history=c1.selectbox('Loan History',[1,0])
+        loan_amount=c2.number_input('Loan Amount Requested (₹)',5000,44848,25000); loan_term=c2.number_input('Loan Term (Months)',12,239,120); loan_purpose=c2.selectbox('Loan Purpose',['Home','Vehicle','Personal','Education']); interest_rate=c2.number_input('Interest Rate (%)',3.5,15.0,7.5,step=0.1)
+        loan_type=c3.selectbox('Loan Type',['Secured','Unsecured']); co_applicant=c3.selectbox('Co-Applicant',['Yes','No']); bank_history=c3.number_input('Bank Account History',0,9,7); transaction_frequency=c3.number_input('Transaction Frequency',5,29,20); default_risk=c3.number_input('Default Risk',0.0,1.0,0.15,step=0.01)
         go=st.form_submit_button('Generate Loan Assessment →',type='primary',use_container_width=True)
     if go:
-        d=pd.DataFrame({'no_of_dependents':[dep],'education':[edu],'self_employed':[emp],'income_annum':[inc],'loan_amount':[loan],'loan_term':[term],'cibil_score':[cibil],'residential_assets_value':[res],'commercial_assets_value':[com],'luxury_assets_value':[lux],'bank_asset_value':[bank]})
+        d=pd.DataFrame({'Gender':[gender],'Age':[age],'Marital_Status':[marital],'Dependents':[dependents],'Education':[education],'Employment_Status':[employment],'Occupation_Type':[occupation],'Residential_Status':[residential],'City/Town':[city],'Annual_Income':[annual_income],'Monthly_Expenses':[monthly_expenses],'Credit_Score':[credit_score],'Existing_Loans':[existing_loans],'Total_Existing_Loan_Amount':[existing_loan_amount],'Outstanding_Debt':[outstanding_debt],'Loan_History':[loan_history],'Loan_Amount_Requested':[loan_amount],'Loan_Term':[loan_term],'Loan_Purpose':[loan_purpose],'Interest_Rate':[interest_rate],'Loan_Type':[loan_type],'Co-Applicant':[co_applicant],'Bank_Account_History':[bank_history],'Transaction_Frequency':[transaction_frequency],'Default_Risk':[default_risk]})
         pred=int(model.predict(d)[0]); p=float(model.predict_proba(d)[0][1]*100); status='Approved' if pred==1 else 'Rejected'
         st.session_state.last={**d.iloc[0].to_dict(),'status':status,'probability':p,'explanation':explain(d.iloc[0])}
     a=st.session_state.last
@@ -122,56 +136,28 @@ def assessment():
             for z in a['explanation']: st.markdown('• '+z)
             st.markdown('</div>',unsafe_allow_html=True)
         with c2:
-            st.markdown(f'<div class="card"><h3 style="color:#17394d">Key Inputs</h3><p class="muted">CIBIL</p><h2 class="blue">{a["cibil_score"]}</h2><p class="muted">Loan Term</p><h2 class="blue">{a["loan_term"]} years</h2><p class="muted">Loan Amount</p><h3 style="color:#12679b">₹{a["loan_amount"]:,.0f}</h3></div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="card"><h3 style="color:#17394d">Key Inputs</h3><p class="muted">Credit Score</p><h2 class="blue">{a["Credit_Score"]}</h2><p class="muted">Annual Income</p><h3 style="color:#12679b">₹{a["Annual_Income"]:,.0f}</h3><p class="muted">Loan Amount</p><h3 style="color:#12679b">₹{a["Loan_Amount_Requested"]:,.0f}</h3></div>',unsafe_allow_html=True)
         st.download_button('⬇ Download Assessment PDF',pdf(a),'LoanLens_AI_Assessment.pdf','application/pdf',use_container_width=True)
 
 def performance():
-    nav()
-    st.markdown('<div class="section">Model Performance</div><div class="sub">A clean comparison of model quality, classification errors, and the factors used by the deployed Random Forest.</div>', unsafe_allow_html=True)
-    st.write('')
-
-    comparison=[('Accuracy',91.45,98.13),('Precision',92.10,98.49),('Recall',94.35,98.49),('F1-Score',93.21,98.49),('ROC-AUC',97.26,99.86)]
-    rows_html=''
-    for metric,lr,rf in comparison:
-        rows_html += f'<tr><td class="metric-name">{metric}</td><td>{lr:.2f}%</td><td><span class="rf-value">{rf:.2f}%</span></td></tr>'
-
-    st.markdown(f'''
-    <div class="perf-card">
-      <div class="perf-card-head"><div><div class="perf-title">Model comparison</div><div class="perf-subtitle">Evaluation on the project test set</div></div><div class="model-pill">Random Forest</div></div>
-      <div class="comparison-table-wrap"><table class="comparison-table"><thead><tr><th>Metric</th><th>Logistic Regression</th><th>Random Forest</th></tr></thead><tbody>{rows_html}</tbody></table></div>
-      <div class="table-note">Higher values indicate stronger performance for all metrics shown.</div>
-    </div>
-    ''',unsafe_allow_html=True)
-
-    kpis=[('98.13%','Random Forest Accuracy','Test set'),('99.86%','Random Forest ROC-AUC','Test set'),('98.49%','Random Forest F1-Score','Test set'),('4,269','Dataset Applications','Total rows')]
-    for col,(value,title,note) in zip(st.columns(4),kpis):
-        col.markdown(f'<div class="metric"><div class="num">{value}</div><div class="label" style="font-size:14px;margin-top:4px;">{title}</div><div style="color:#9aabb5;font-size:11px;margin-top:5px;">{note}</div></div>',unsafe_allow_html=True)
-
-    st.markdown('<div class="section">Performance by metric</div><div class="sub">The same test-set metrics shown above, presented visually for quick comparison.</div>',unsafe_allow_html=True)
-    st.write('')
-    bars_html=''
-    for metric,lr,rf in comparison:
-        bars_html += f'<div class="perf-bar-row"><div class="perf-bar-label">{metric}</div><div class="bar-line"><span class="bar-model">LR</span><div class="bar-track"><div class="bar-fill lr-fill" style="width:{lr}%;"></div></div><span class="bar-number">{lr:.2f}%</span></div><div class="bar-line"><span class="bar-model">RF</span><div class="bar-track"><div class="bar-fill rf-fill" style="width:{rf}%;"></div></div><span class="bar-number">{rf:.2f}%</span></div></div>'
-    st.markdown(f'<div class="perf-card"><div class="legend-row"><span><span class="legend-dot lr-dot"></span>Logistic Regression</span><span><span class="legend-dot rf-dot"></span>Random Forest</span></div>{bars_html}</div>',unsafe_allow_html=True)
-
-    st.markdown('<div class="section">Confusion matrices</div><div class="sub">Actual classes versus model predictions on the test set.</div>',unsafe_allow_html=True)
-    st.write('')
-    def confusion_card(title,tn,fp,fn,tp):
-        return f'''<div class="cm-card"><div class="cm-title">{title}</div><div class="cm-subtitle">Rows = actual &nbsp;•&nbsp; Columns = predicted</div><div class="cm-grid"><div class="cm-label corner"></div><div class="cm-label">Rejected</div><div class="cm-label">Approved</div><div class="cm-label side">Rejected</div><div class="cm-cell tn"><small>True Negative</small><strong>{tn}</strong></div><div class="cm-cell fp"><small>False Positive</small><strong>{fp}</strong></div><div class="cm-label side">Approved</div><div class="cm-cell fn"><small>False Negative</small><strong>{fn}</strong></div><div class="cm-cell tp"><small>True Positive</small><strong>{tp}</strong></div></div></div>'''
-    c1,c2=st.columns(2,gap='large')
-    with c1: st.markdown(confusion_card('Logistic Regression',280,43,30,501),unsafe_allow_html=True)
-    with c2: st.markdown(confusion_card('Random Forest',315,8,8,523),unsafe_allow_html=True)
-
-    st.markdown('<div class="section">Random Forest feature importance</div><div class="sub">Top five impurity-based feature importance values from the trained Random Forest.</div>',unsafe_allow_html=True)
-    st.write('')
-    features=[('CIBIL Score',79.55),('Loan Term',6.15),('Loan Amount',3.09),('Annual Income',1.95),('Luxury Assets Value',1.95)]
-    feature_rows=''
-    for name,value in features:
-        width=(value/79.55)*100
-        feature_rows += f'<div class="fi-row"><div class="fi-name">{name}</div><div class="fi-track"><div class="fi-fill" style="width:{width:.2f}%;"></div></div><div class="fi-value">{value:.2f}%</div></div>'
-    st.markdown(f'<div class="perf-card"><div class="perf-card-head"><div><div class="perf-title">What the model relied on most</div><div class="perf-subtitle">Relative importance within the trained Random Forest</div></div><div class="importance-badge">Top 5</div></div>{feature_rows}<div class="table-note" style="margin-top:18px;">CIBIL Score is the dominant feature in the trained Random Forest model. Feature importance indicates model reliance, not causation.</div></div>',unsafe_allow_html=True)
-
-    st.markdown('<div class="card" style="margin-top:20px;"><div style="font-size:20px;font-weight:850;color:#17394d;margin-bottom:8px;">Model selection</div><div class="muted" style="line-height:1.7;font-size:14px;">The project deploys Random Forest because its measured test-set performance was higher than Logistic Regression across the reported evaluation metrics. These results are specific to this project dataset and should not be interpreted as evidence of bank-grade or real-world lending performance.</div></div>',unsafe_allow_html=True)
+    nav(); st.markdown('<div class="section">Model Performance</div><div class="sub">Comparison of Logistic Regression and Random Forest on the project test set.</div>',unsafe_allow_html=True); st.write('')
+    comparison=[('Accuracy',85.07,85.11),('Precision',85.03,85.10),('Recall',93.12,93.09),('F1-Score',88.89,88.91),('ROC-AUC',81.52,82.03)]
+    rows_html=''.join([f'<tr><td class="metric-name">{m}</td><td>{lr:.2f}%</td><td><span class="rf-value">{rf:.2f}%</span></td></tr>' for m,lr,rf in comparison])
+    st.markdown(f'<div class="perf-card"><div class="perf-card-head"><div><div class="perf-title">Model comparison</div><div class="perf-subtitle">Evaluation on the project test set</div></div><div class="model-pill">Random Forest</div></div><div class="comparison-table-wrap"><table class="comparison-table"><thead><tr><th>Metric</th><th>Logistic Regression</th><th>Random Forest</th></tr></thead><tbody>{rows_html}</tbody></table></div><div class="table-note">Random Forest is the deployed model based on its slightly higher overall test-set performance.</div></div>',unsafe_allow_html=True)
+    kpis=[('85.11%','Random Forest Accuracy','Test set'),('82.03%','Random Forest ROC-AUC','Test set'),('88.91%','Random Forest F1-Score','Test set'),('52,000','Dataset Applications','Total rows')]
+    for col,(value,title,note) in zip(st.columns(4),kpis): col.markdown(f'<div class="metric"><div class="num">{value}</div><div class="label" style="font-size:14px;margin-top:4px;">{title}</div><div style="color:#9aabb5;font-size:11px;margin-top:5px;">{note}</div></div>',unsafe_allow_html=True)
+    st.markdown('<div class="section">Performance by metric</div><div class="sub">Visual comparison of the same test-set metrics.</div>',unsafe_allow_html=True); st.write('')
+    bars_html=''.join([f'<div class="perf-bar-row"><div class="perf-bar-label">{m}</div><div class="bar-line"><span class="bar-model">LR</span><div class="bar-track"><div class="bar-fill lr-fill" style="width:{lr}%;"></div></div><span class="bar-number">{lr:.2f}%</span></div><div class="bar-line"><span class="bar-model">RF</span><div class="bar-track"><div class="bar-fill rf-fill" style="width:{rf}%;"></div></div><span class="bar-number">{rf:.2f}%</span></div></div>' for m,lr,rf in comparison])
+    st.markdown(f'<div class="perf-card"><div class="legend-row"><span><span class="legend-dot"></span>Logistic Regression</span><span><span class="legend-dot rf-dot"></span>Random Forest</span></div>{bars_html}</div>',unsafe_allow_html=True)
+    st.markdown('<div class="section">Confusion matrices</div><div class="sub">Evaluation on test set predictions (10,400 samples).</div>',unsafe_allow_html=True); st.write('')
+    cm_html='''<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:24px;"><div class="cm-card"><div class="cm-title">Logistic Regression</div><div class="cm-subtitle">Confusion Matrix (Test Set)</div><div class="cm-grid"><div></div><div class="cm-label">Pred 0</div><div class="cm-label">Pred 1</div><div class="cm-label side">Actual 0</div><div class="cm-cell tn"><small>True Neg</small><strong>2,633</strong></div><div class="cm-cell fp"><small>False Pos</small><strong>1,094</strong></div><div class="cm-label side">Actual 1</div><div class="cm-cell fn"><small>False Neg</small><strong>459</strong></div><div class="cm-cell tp"><small>True Pos</small><strong>6,214</strong></div></div></div><div class="cm-card"><div class="cm-title">Random Forest</div><div class="cm-subtitle">Confusion Matrix (Test Set)</div><div class="cm-grid"><div></div><div class="cm-label">Pred 0</div><div class="cm-label">Pred 1</div><div class="cm-label side">Actual 0</div><div class="cm-cell tn"><small>True Neg</small><strong>2,639</strong></div><div class="cm-cell fp"><small>False Pos</small><strong>1,088</strong></div><div class="cm-label side">Actual 1</div><div class="cm-cell fn"><small>False Neg</small><strong>461</strong></div><div class="cm-cell tp"><small>True Pos</small><strong>6,212</strong></div></div></div></div>'''
+    st.markdown(cm_html,unsafe_allow_html=True)
+    st.markdown('<div class="section">Random Forest feature importance</div><div class="sub">Top ten impurity-based feature importance values from the trained Random Forest.</div>',unsafe_allow_html=True); st.write('')
+    features=[('Credit Score',21.1834),('Loan Amount Requested',18.3090),('Annual Income',11.0275),('Age',6.9462),('Interest Rate',3.8224),('Outstanding Debt',3.7987),('Monthly Expenses',3.7705),('Total Existing Loan Amount',3.7484),('Loan Term',3.5441),('Default Risk',3.3607)]
+    max_importance=features[0][1]
+    feature_rows=''.join([f'<div class="fi-row"><div class="fi-name">{name}</div><div class="fi-track"><div class="fi-fill" style="width:{(value/max_importance)*100:.2f}%;"></div></div><div class="fi-value">{value:.2f}%</div></div>' for name,value in features])
+    st.markdown(f'<div class="perf-card"><div class="perf-card-head"><div><div class="perf-title">What the model relied on most</div><div class="perf-subtitle">Relative importance within the trained Random Forest</div></div><div class="importance-badge">Top 10</div></div>{feature_rows}<div class="table-note" style="margin-top:18px;">Credit Score is the most important feature at approximately 21.18%. Feature importance indicates model reliance, not causation.</div></div>',unsafe_allow_html=True)
+    st.markdown('<div class="card" style="margin-top:20px;"><div style="font-size:20px;font-weight:850;color:#17394d;margin-bottom:8px;">Model selection</div><div class="muted" style="line-height:1.7;font-size:14px;">Random Forest is deployed because it achieved slightly higher accuracy, precision, F1-score, and ROC-AUC than Logistic Regression on the project test set. Logistic Regression achieved a marginally higher recall. These results are specific to this dataset and should not be interpreted as bank-grade or real-world lending performance.</div></div>',unsafe_allow_html=True)
     st.markdown('<div class="footer">LoanLens AI • Model Evaluation Dashboard</div>',unsafe_allow_html=True)
 
 if st.session_state.page=='home': home()
